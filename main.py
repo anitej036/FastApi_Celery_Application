@@ -6,13 +6,10 @@ from models import ReviewHistory, Category, AccessLog
 from celery_config import create_access_log_task
 import openai
 
-# Initialize FastAPI app
 app = FastAPI()
 
-# Create database tables (only for local development, use Alembic for production)
 Base.metadata.create_all(bind=engine)
 
-# Dependency to get DB session
 def get_db():
     db = SessionLocal()
     try:
@@ -31,7 +28,6 @@ def get_review_trends(db: Session = Depends(get_db)):
         .subquery()
     )
 
-    # Join with ReviewHistory and Category to get required fields
     query = (
         db.query(
             Category.id,
@@ -49,7 +45,6 @@ def get_review_trends(db: Session = Depends(get_db)):
 
     result = query.all()
 
-    # Asynchronously log access
     create_access_log_task.delay("GET /reviews/trends")
     
     return result
@@ -84,7 +79,6 @@ def get_reviews(category_id: int, page: int = Query(1, alias="page"), db: Sessio
             review.tone, review.sentiment = fetch_tone_sentiment(review.text, review.stars)
             db.commit()
     
-    # Log API access asynchronously
     create_access_log_task.delay(f"GET /reviews/?category_id={category_id}")
     
     return reviews
@@ -99,5 +93,5 @@ def fetch_tone_sentiment(text, stars):
         ]
     )
     analysis = response["choices"][0]["message"]["content"].strip()
-    tone, sentiment = analysis.split("\n")[:2]  # Assuming output format
+    tone, sentiment = analysis.split("\n")[:2]
     return tone, sentiment
